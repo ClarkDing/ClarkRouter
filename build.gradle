@@ -1,0 +1,23 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+buildscript {
+
+    ext.min_version = 24
+    ext.compile_version = 32
+    ext.target_version = 31
+
+    ext.kot_core = "1.7.0"
+    ext.app_compat = "1.5.1"
+    ext.material = "1.9.0"
+
+    ext["signing.keyId"] = '92AA9FA1'
+    ext["signing.password"] = 'Clark,2019'
+    ext["signing.secretKeyRingFile"] = '../clarkding (clarkding)_0x92AA9FA1_SECRET.gpg'
+
+}
+
+plugins {
+    id 'com.android.application' version '7.3.1' apply false
+    id 'com.android.library' version '7.3.1' apply false
+    id 'org.jetbrains.kotlin.android' version '1.7.20' apply false
+    id 'org.jetbrains.kotlin.jvm' version '1.7.20' apply false
+}

@@ -1,0 +1,180 @@
+plugins {
+    id 'groovy'
+    id 'org.jetbrains.kotlin.jvm'
+    id 'org.jetbrains.kotlin.kapt'
+    id 'maven-publish'
+    id 'signing'
+}
+
+dependencies {
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
+    implementation localGroovy() //groovy sdk
+    implementation gradleApi()
+
+    implementation "com.android.tools.build:gradle:4.2.2"
+
+    // javassist
+    implementation 'org.javassist:javassist:3.20.0-GA'
+
+    // asm
+    implementation 'org.ow2.asm:asm:9.3'
+    implementation 'org.ow2.asm:asm-commons:9.3'
+
+}
+
+java {
+    sourceCompatibility JavaVersion.VERSION_1_8
+    targetCompatibility JavaVersion.VERSION_1_8
+}
+
+
+javadoc {
+    description = "生成jar格式的javadoc。"
+    // 只显示 protected 和 public 的类和成员
+    options.memberLevel = JavadocMemberLevel.PROTECTED
+    options.author = true
+    options.version = true
+    options.header = project.name
+    // 静默javadoc检查（比如不支持@date会报错等），jdk 8+
+    options.addStringOption('Xdoclint:none', '-quiet')
+    // 防止本地打开中文乱码
+    options.addStringOption("charset", "UTF-8")
+    // suppress warnings due to cross-module @see and @link references;
+    // note that global 'api' task does display all warnings.
+    logging.captureStandardError LogLevel.INFO
+    // suppress "## warnings" message
+    logging.captureStandardOutput LogLevel.INFO
+    // 编码一定要配置否则直接出错
+    options.encoding = "UTF-8"
+    options.charSet = "UTF-8"
+}
+
+task generateJavadoc(type: Jar, dependsOn: javadoc) {
+    group = 'jar'
+    archiveClassifier.set('javadoc')
+    from javadoc.destinationDir
+}
+
+task generateSourcesJar(type: Jar) {
+    archiveClassifier.set('sources')
+    from sourceSets.main.java.srcDirs
+}
+
+tasks.withType(JavaCompile) {
+    options.encoding = "UTF-8"
+}
+
+ext['PROJ_BASENAME'] = "ClarkRouterPlugin"
+ext['PROJ_VERSION'] = "1.0.1"
+
+afterEvaluate {
+
+    Properties properties = new Properties()
+    properties.load(project.rootProject.file('local.properties').newDataInputStream())
+
+    publishing {
+        repositories {
+            maven {
+                name "sonartype-Staging"
+                url = properties.getProperty('sonartypeStaging')
+                allowInsecureProtocol(true)
+                credentials {
+                    username = properties.getProperty('ossrhUsername')
+                    password = properties.getProperty('ossrhPassword')
+                }
+            }
+            maven {
+                name "sonatype-Snapshots"
+                url = properties.getProperty('sonatypeSnapshots')
+                allowInsecureProtocol(true)
+                credentials {
+                    username = properties.getProperty('ossrhUsername')
+                    password = properties.getProperty('ossrhPassword')
+                }
+            }
+        }
+
+        publications {
+            release(MavenPublication) {
+
+                from components.java
+
+                groupId = properties.getProperty('PROJ_GROUP')
+                artifactId = PROJ_BASENAME
+                version = PROJ_VERSION
+
+                pom {
+                    name = PROJ_BASENAME
+                    description = properties.getProperty('PROJ_DESCRIPTION')
+                    url = properties.getProperty('PROJ_VCSURL')
+                    licenses {
+                        license {
+                            name = 'The Apache Software License, Version 2.0'
+                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+                    developers {
+                        developer {
+                            id = properties.getProperty('DEVELOPER_ID')
+                            name = properties.getProperty('DEVELOPER_NAME')
+                            email = properties.getProperty('DEVELOPER_EMAIL')
+                        }
+                    }
+                    scm {
+                        connection = properties.getProperty('PROJ_WEBSITEURL')
+                        developerConnection = properties.getProperty('PROJ_VCSURL')
+                        url = properties.getProperty('PROJ_URL')
+                    }
+                }
+
+                // 需要上传的source jar
+                artifact generateSourcesJar
+                // 需要上传的java doc
+                artifact generateJavadoc
+            }
+
+            debug(MavenPublication) {
+
+                from components.java
+
+                groupId = properties.getProperty('PROJ_GROUP')
+                artifactId = PROJ_BASENAME
+                version = String.format("%s-SNAPSHOT", PROJ_VERSION)
+
+                pom {
+                    name = PROJ_BASENAME
+                    description = properties.getProperty('PROJ_DESCRIPTION')
+                    url = properties.getProperty('PROJ_WEBSITEURL')
+
+                    licenses {
+                        license {
+                            name = 'The Apache Software License, Version 2.0'
+                            url = 'http://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+                    developers {
+                        developer {
+                            id = properties.getProperty('DEVELOPER_ID')
+                            name = properties.getProperty('DEVELOPER_NAME')
+                            email = properties.getProperty('DEVELOPER_EMAIL')
+                        }
+                    }
+                    scm {
+                        connection = properties.getProperty('PROJ_WEBSITEURL')
+                        developerConnection = properties.getProperty('PROJ_VCSURL')
+                        url = properties.getProperty('PROJ_URL')
+                    }
+                }
+
+                // 需要上传的source jar
+                artifact generateSourcesJar
+                // 需要上传的java doc
+                artifact generateJavadoc
+            }
+        }
+    }
+    signing {
+        sign publishing.publications.release, publishing.publications.debug
+    }
+}
